@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#0C0C0F"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Coach Giacomo"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon.png"/>
+<title>Coach Giacomo 🏔️</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0C0C0F;font-family:-apple-system,'Helvetica Neue',sans-serif;color:#F0EEE8;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+::-webkit-scrollbar{display:none}
+@keyframes bounce{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-4px);opacity:1}}
+textarea{font-family:inherit}
+</style>
+</head>
+<body>
+<div id="root"><div style="background:#0C0C0F;height:100vh;display:flex;align-items:center;justify-content:center;font-size:40px">⛰️</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+
+// ── STORAGE (localStorage per PWA offline) ──
+async function ld(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
+async function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+// ── DATA ──
+const PHASES=[
+  {id:1,name:"Accumulation",    short:"F1",start:"2026-05-18",end:"2026-06-01",kcal:2300,carbs:"~180g",color:"#38BDF8",emoji:"🌱"},
+  {id:2,name:"Capacity",        short:"F2",start:"2026-06-02",end:"2026-07-06",kcal:2500,carbs:"~220g",color:"#FB923C",emoji:"⚡"},
+  {id:3,name:"Strength+Boulder",short:"F3",start:"2026-07-07",end:"2026-08-31",kcal:2650,carbs:"~250g",color:"#C084FC",emoji:"💪"},
+  {id:4,name:"Performance",     short:"F4",start:"2026-09-01",end:"2026-10-04",kcal:2800,carbs:"~280g",color:"#FBBF24",emoji:"🎯"},
+];
+const WEEKLY={
+  1:[
+    {day:"Lun",type:"strength",label:"Forza + Hang",      detail:"Max hang 10s×6, trazioni, core TRX",     icon:"🏋️"},
+    {day:"Mar",type:"climb",   label:"Arrampicata tecnica",detail:"Volume facile, focus tecnica, 2h",        icon:"🧗"},
+    {day:"Mer",type:"rest",    label:"Riposo attivo",      detail:"Stretching, mobilità 20min",              icon:"😴"},
+    {day:"Gio",type:"strength",label:"Assessment / Forza", detail:"Max hang trave+Tindeq, trazioni",         icon:"🏋️"},
+    {day:"Ven",type:"rest",    label:"Riposo",             detail:"Recupero completo",                       icon:"😴"},
+    {day:"Sab",type:"outdoor", label:"Outdoor",            detail:"Roccia tutto il giorno",                  icon:"🏔️"},
+    {day:"Dom",type:"outdoor", label:"Outdoor / Riposo",   detail:"A discrezione, pasto libero",             icon:"🌄"},
+  ],
+  2:[
+    {day:"Lun",type:"rest",    label:"Riposo attivo",      detail:"Mobilità, stretching 20min",              icon:"😴"},
+    {day:"Mar",type:"climb",   label:"ARC Training",       detail:"45min traverso continuo bassa intensità", icon:"🧗"},
+    {day:"Mer",type:"strength",label:"Hang + Antagonisti", detail:"Max hang, push antagonisti, core",        icon:"🏋️"},
+    {day:"Gio",type:"climb",   label:"4×4 Boulder",        detail:"4 problemi × 4 serie, 3min rest",         icon:"🧗"},
+    {day:"Ven",type:"climb",   label:"Vie lunghe",         detail:"Efficienza, tecnica in continuità",       icon:"🧗"},
+    {day:"Sab",type:"outdoor", label:"Outdoor",            detail:"Falesia o blocchi tutto il giorno",       icon:"🏔️"},
+    {day:"Dom",type:"rest",    label:"Riposo",             detail:"Recupero, pasto libero",                  icon:"😴"},
+  ],
+  3:[
+    {day:"Lun",type:"strength",label:"Max Strength",       detail:"Hang pesante, campus, explosive",         icon:"🏋️"},
+    {day:"Mar",type:"climb",   label:"Boulder massimale",  detail:"Problemi V5-V8, qualità > quantità",      icon:"🧗"},
+    {day:"Mer",type:"rest",    label:"Riposo attivo",      detail:"Stretching, mobilità",                   icon:"😴"},
+    {day:"Gio",type:"strength",label:"RFD + Power",        detail:"Campusboard, mosse esplosive",            icon:"⚡"},
+    {day:"Ven",type:"climb",   label:"Progetto",           detail:"Tentativo redpoint + riscaldamento",      icon:"🧗"},
+    {day:"Sab",type:"outdoor", label:"Outdoor Boulder",    detail:"Sessione blocchi, progetto esterno",      icon:"🏔️"},
+    {day:"Dom",type:"rest",    label:"Riposo",             detail:"Recupero completo",                       icon:"😴"},
+  ],
+  4:[
+    {day:"Lun",type:"rest",    label:"Riposo attivo",      detail:"Recupero, mobilità leggera",              icon:"😴"},
+    {day:"Mar",type:"climb",   label:"Redpoint attempt",   detail:"Progetto + vie di riscaldamento",         icon:"🎯"},
+    {day:"Mer",type:"strength",label:"Mantenimento forza", detail:"Hang leggero, qualità movimento",         icon:"🏋️"},
+    {day:"Gio",type:"climb",   label:"Sessione performance",detail:"Intensità alta, timing precisione",      icon:"🧗"},
+    {day:"Ven",type:"rest",    label:"Riposo pre-weekend", detail:"Recupero attivo, stretching",             icon:"😴"},
+    {day:"Sab",type:"outdoor", label:"Outdoor — Progetto", detail:"Giornata dedicata al redpoint",           icon:"🏔️"},
+    {day:"Dom",type:"outdoor", label:"Outdoor / Riposo",   detail:"A discrezione",                           icon:"🌄"},
+  ],
+};
+const EX={
+  "1-0":{warn:"⚠️ Gomito: eccentrica lenta, stop se dolore",exs:[
+    {id:"wu",  name:"Riscaldamento",      emoji:"🔥",sets:1,reps:"10 min",restSec:0,  weight:null,unit:null,      notes:"Traverso leggero o cardio"},
+    {id:"mh",  name:"Max Hang 10s",       emoji:"🤌",sets:6,reps:"10 sec",restSec:180,weight:15, unit:"kg extra",notes:"20mm half-crimp • Baseline +15kg • Stop se dolore gomito"},
+    {id:"pull",name:"Trazioni Zavorrate", emoji:"💪",sets:4,reps:4,      restSec:180,weight:35, unit:"kg",      notes:"Baseline +35kg • Eccentrica 3s controllata"},
+    {id:"push",name:"Push Antagonisti",   emoji:"🫸",sets:3,reps:12,     restSec:60, weight:null,unit:null,      notes:"Push-up lenti o press manubri"},
+    {id:"core",name:"Core TRX",           emoji:"🎯",sets:3,reps:12,     restSec:60, weight:null,unit:null,      notes:"Plank TRX o hollow body"},
+  ]},
+  "1-3":{warn:"✅ Assessment 28/05 fatto: Pull +35kg | Hang +15kg | Talon 28kg/mano (pick-up) | Target F3: +30kg hang",exs:[
+    {id:"wu",   name:"Riscaldamento completo",     emoji:"🔥",sets:1,reps:"15 min",restSec:0,  weight:null,unit:null,      notes:"Traverso + mobilità dita graduale"},
+    {id:"pull", name:"Trazioni Zavorrate — scala", emoji:"💪",sets:5,reps:4,      restSec:240,weight:35, unit:"kg",      notes:"Baseline +35kg • Scala: +20/+27/+32/+35/MAX"},
+    {id:"mh",   name:"Max Hang 10s — massimale",  emoji:"🤌",sets:3,reps:"10 sec",restSec:300,weight:15, unit:"kg extra",notes:"Baseline +15kg su 20mm • Target F3: +30kg"},
+    {id:"talon",name:"Talon Pick-up",             emoji:"✋",sets:2,reps:"10 sec",restSec:240,weight:28, unit:"kg/mano", notes:"Baseline 28kg/mano (pick-up, no BW)"},
+  ]},
+  "2-1":{warn:"Se hai difficoltà a respirare stai andando troppo forte",exs:[
+    {id:"wu", name:"Riscaldamento",       emoji:"🔥",sets:1,reps:"10 min",restSec:0,  weight:null,unit:null,notes:"Boulder V0-V1 o traverso facilissimo"},
+    {id:"arc",name:"ARC — Traverso",      emoji:"🧗",sets:3,reps:"15 min",restSec:180,weight:null,unit:null,notes:"Intensità 3-4/10 • Non staccare mai"},
+    {id:"cd", name:"Stretching + respiro",emoji:"🧘",sets:1,reps:"10 min",restSec:0,  weight:null,unit:null,notes:"Stretching completo"},
+  ]},
+  "2-2":{warn:"⚠️ Warm-up dita graduale obbligatorio prima degli hang",exs:[
+    {id:"wu",  name:"Riscaldamento dita", emoji:"🔥",sets:1,reps:"10 min",restSec:0,  weight:null,unit:null,      notes:"Rungs in legno progressivo"},
+    {id:"mh",  name:"Max Hang 10s",       emoji:"🤌",sets:5,reps:"10 sec",restSec:180,weight:15, unit:"kg extra",notes:"20mm half-crimp • Carico moderato vs +15kg baseline"},
+    {id:"push",name:"Push + Shoulder",    emoji:"🫸",sets:3,reps:15,     restSec:60, weight:null,unit:null,      notes:"Push-up + lateral raise manubri"},
+    {id:"ext", name:"Estensori elastico", emoji:"🟡",sets:3,reps:15,     restSec:45, weight:null,unit:null,      notes:"Rubber band estensione dita"},
+    {id:"core",name:"Core",               emoji:"🎯",sets:3,reps:30,     restSec:45, weight:null,unit:null,      notes:"Plank 30s o ab wheel"},
+  ]},
+  "2-3":{warn:"4 problemi consecutivi senza riposo, poi 3min di recupero",exs:[
+    {id:"wu",name:"Riscaldamento",emoji:"🔥",sets:1,reps:"15 min",restSec:0,  weight:null,unit:null,notes:"Boulder progressivo V1→V4"},
+    {id:"44",name:"4×4 Boulder", emoji:"🧗",sets:4,reps:"4 prob.",restSec:180,weight:null,unit:null,notes:"4 problemi V3-V5 back-to-back • 3min tra serie"},
+    {id:"cd",name:"Cool-down",   emoji:"🧘",sets:1,reps:"10 min",restSec:0,  weight:null,unit:null,notes:"Stretching completo"},
+  ]},
+  "2-4":{warn:"Focus efficienza — non forzare, vie 6c-7a",exs:[
+    {id:"wu",   name:"Riscaldamento",  emoji:"🔥",sets:1,reps:"20 min",restSec:0,  weight:null,unit:null,notes:"Vie facili 6a-6b"},
+    {id:"route",name:"Vie continuità", emoji:"🧗",sets:4,reps:"1 via", restSec:300,weight:null,unit:null,notes:"6c-7a • Danza, respiro, non pompare"},
+    {id:"cd",   name:"Cool-down",      emoji:"🧘",sets:1,reps:"10 min",restSec:0,  weight:null,unit:null,notes:"Stretching esteso"},
+  ]},
+  "3-0":{warn:"Forza massimale — prerequisito: recupero completo",exs:[
+    {id:"wu",  name:"Riscaldamento esteso",      emoji:"🔥",sets:1,reps:"20 min",restSec:0,  weight:null,unit:null,      notes:"Boulder facile + mobilità"},
+    {id:"mh",  name:"Max Hang pesante 10s",      emoji:"🤌",sets:5,reps:"10 sec",restSec:240,weight:20, unit:"kg extra",notes:"Target F3: da +15kg → +30kg • 4min rest obbligatorio"},
+    {id:"pull",name:"Trazioni zavorrate pesanti", emoji:"💪",sets:4,reps:3,      restSec:240,weight:15, unit:"kg",      notes:"Massimale controllato • Eccentrica 3s"},
+    {id:"camp",name:"Campus moves",              emoji:"⚡",sets:3,reps:5,      restSec:180,weight:null,unit:null,      notes:"1-3-5 o equivalente"},
+  ]},
+  "3-3":{warn:"Sessione esplosiva — freschezza neuromuscolare necessaria",exs:[
+    {id:"wu",  name:"Attivazione CNS",   emoji:"🔥",sets:1,reps:"15 min",restSec:0,  weight:null,unit:null,      notes:"Traverso + boulder + jumps"},
+    {id:"rfd", name:"RFD Hang — Tindeq",emoji:"📊",sets:5,reps:"1 sec", restSec:180,weight:0,  unit:"kg extra",notes:"Contrazione massimale RAPIDA • Misura Newton"},
+    {id:"dyn", name:"Mosse dinamiche",  emoji:"🎯",sets:4,reps:4,       restSec:180,weight:null,unit:null,      notes:"Dyno o lunge su homewall"},
+    {id:"pull",name:"Trazioni esplosive",emoji:"💪",sets:4,reps:4,       restSec:180,weight:null,unit:null,      notes:"Massima velocità concentrica"},
+  ]},
+  "4-1":{warn:"Giornata redpoint — arriva riposato, mentalmente fresco",exs:[
+    {id:"wu",  name:"Riscaldamento vie facili",emoji:"🔥",sets:3,reps:"1 via", restSec:300,weight:null,unit:null,notes:"6a → 6c+ progressivo"},
+    {id:"proj",name:"Tentativo Progetto",      emoji:"🎯",sets:3,reps:"1 via", restSec:600,weight:null,unit:null,notes:"Max 3 tentativi freschi • 10min rest"},
+    {id:"down",name:"Down-climb cool-down",    emoji:"🧘",sets:1,reps:"20 min",restSec:0,  weight:null,unit:null,notes:"Via facile down-climbing"},
+  ]},
+};
+const DEFAULT_MEAL={
+  lun:{pranzo:"Potato bowl (300g patate + 40g soia + verdure miste)",snack:"Yogurt cake proteico",cena:"60g riso basmati + 150g piselli + 3 uova",postCena:"Ninja Creami (400ml latte scremato + 1 whey + 10g zucchero)"},
+  mar:{pranzo:"Potato bowl (300g patate + 40g soia + verdure miste)",snack:"Yogurt cake proteico",cena:"60g riso basmati + 150g piselli + 150g tofu",postCena:"Ninja Creami"},
+  mer:{pranzo:"Potato bowl (300g patate + 40g soia + verdure miste)",snack:"60g corn flakes + 200ml latte scremato",cena:"60g riso basmati + 150g piselli + 80g seitan",postCena:"Ninja Creami"},
+  gio:{pranzo:"Potato bowl (300g patate + 40g soia + verdure miste)",snack:"Yogurt cake proteico",cena:"60g riso basmati + 150g piselli + 3 uova",postCena:"Ninja Creami"},
+  ven:{pranzo:"Potato bowl (300g patate + 40g soia + verdure miste)",snack:"Yogurt cake proteico",cena:"60g riso basmati + 150g piselli + 150g tofu",postCena:"Ninja Creami"},
+  sab:{pranzo:"Libero (outdoor) — barrette e frutta durante",snack:"Frutta secca + barretta",cena:"Libero",postCena:"Ninja Creami"},
+  dom:{pranzo:"Libero",snack:"A discrezione",cena:"Libero",postCena:"Ninja Creami"},
+};
+const DAY_LABELS=["lun","mar","mer","gio","ven","sab","dom"];
+const DAY_NAMES=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
+const MEAL_LABELS=["pranzo","snack","cena","postCena"];
+const MEAL_NAMES=["🥗 Pranzo","🍎 Snack","🍽️ Cena","🍦 Post-cena"];
+const SCOL={
+  climb:   {bg:"rgba(255,93,46,.12)", border:"#FF5D2E"},
+  strength:{bg:"rgba(59,139,235,.12)",border:"#3B8BEB"},
+  outdoor: {bg:"rgba(34,197,94,.12)", border:"#22C55E"},
+  rest:    {bg:"rgba(55,65,81,.15)",  border:"#374151"},
+};
+const SYSTEM_PROMPT=`Sei il coach AI di Giacomo, 31 anni, arrampicatore italiano.
+PROFILO: 179cm, ~73kg, 15.3% grasso, 31.9kg massa muscolare | Redpoint: 7c | Goal: 8a
+EQUIPMENT: homewall 10-30°, hangboard, TRX, manubri, elastici, Tindeq, rungs legno, pinch blocks, pallone 8cm
+⚠️ GOMITO: irritazione — no movimenti compressivi rapidi, no eccesso volume
+PIANO 2026: F1 18/5-1/6 (2300kcal) | F2 2/6-6/7 (2500kcal) | F3 7/7-31/8 (2650kcal) | F4 1/9-4/10 (2800kcal)
+NUTRIZIONE vegetariano, no colazione | Creatina da 26/5/2026 | Target: 155-165g prot, 75-85g grassi
+
+ASSESSMENT 28/05/2026 (BW 74.8kg, HRV basso 29ms post-cheat = valori conservativi):
+- Pull-up zavorrate: +35kg (46.9% BW extra) ✅ eccellente
+- Half-crimp hang 10s 20mm: +15kg (20% BW extra) ⚠️ principale limitante verso 8a — target F3: +30kg
+- Talon pick-up: 28kg/mano (no BW, test pick-up) — baseline open hand
+- Tindeq max pull iso: 46.3kg L / 45.8kg R (LSI 98.8%) ✅ simmetria perfetta
+- RFD 20-80%: 116.8 N/s L / 147.8 N/s R ⚠️ asimmetria 27% destra più esplosiva
+ANALISI: pull strength ottima, finger strength half-crimp è il gap principale per 8a. F3 deve prioritizzare max hang loading progressivo su 20mm.
+Rispondi SEMPRE in italiano. Sii conciso e pratico. Priorità: performance arrampicata e prevenzione infortuni.`;
+
+// ── UTILS ──
+const C={bg:"#0C0C0F",surface:"#14141A",card:"#1A1A22",border:"#252530",text:"#F0EEE8",muted:"#5A5A6A",faint:"#2A2A35",accent:"#FF5D2E"};
+const sc={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:14};
+const sl={color:C.muted,fontSize:10,letterSpacing:2,textTransform:"uppercase",marginBottom:6};
+const si={background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,fontSize:14,padding:"9px 11px",width:"100%",boxSizing:"border-box",outline:"none"};
+
+function getCurrentPhase(){
+  const now=new Date();now.setHours(12,0,0,0);
+  for(const p of PHASES){const e=new Date(p.end);e.setHours(23,59,59);if(now>=new Date(p.start)&&now<=e)return p;}
+  return PHASES[PHASES.length-1];
+}
+function getDaysUntil(d){const t=new Date(d);t.setHours(23,59,59);const n=new Date();n.setHours(0,0,0,0);return Math.max(0,Math.ceil((t-n)/86400000));}
+function getPhaseProgress(p){return Math.min(100,Math.max(0,(Date.now()-new Date(p.start).getTime())/(new Date(p.end).getTime()-new Date(p.start).getTime())*100));}
+function fmtDate(d){const[,m,day]=d.split("-");return`${parseInt(day)}/${parseInt(m)}`;}
+function getTodayIdx(){const d=new Date().getDay();return d===0?6:d-1;}
+function fmtTime(s){return`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
+
+async function preprocessImage(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=1200,scale=Math.min(1,MAX/Math.max(img.width,img.height));
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
+      canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg",0.88).split(",")[1]);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("Impossibile leggere immagine"));};
+    img.src=url;
+  });
+}
+
+
+// ── ASSESSMENT DATA ──
+const DEFAULT_ASSESSMENTS=[{
+  date:"2026-05-28", bw:74.8,
+  hangHC:15, pullup:35, talonPU:28,
+  tindeqL:46.3, tindeqR:45.8,
+  rfdL:116.8, rfdR:147.8,
+  notes:"HRV basso (29ms post-cheat) — valori conservativi. Target F3: hang +30kg."
+}];
+
+// ── MINI LINE CHART ──
+function MiniLineChart({vals,color,label,unit,invert=false,target=null}){
+  if(!vals||vals.length<1)return null;
+  const nums=vals.map(v=>parseFloat(v)).filter(v=>!isNaN(v));
+  if(nums.length<1)return null;
+  const last=nums[nums.length-1];
+  const first=nums[0];
+  const trend=last-first;
+  const trendGood=invert?trend<=0:trend>=0;
+  const trendColor=nums.length<2?C.muted:Math.abs(trend)<0.1?C.muted:trendGood?"#22C55E":"#EF4444";
+  if(nums.length<2) return(
+    <div style={{...sc,marginBottom:8,padding:"10px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{color:C.muted,fontSize:11}}>{label}</span>
+        <span style={{color:color,fontWeight:700,fontSize:16}}>{last.toFixed(1)} <span style={{fontSize:10,fontWeight:400}}>{unit}</span></span>
+      </div>
+      {target&&<div style={{color:C.muted,fontSize:10,marginTop:4}}>Target: {target} {unit}</div>}
+    </div>
+  );
+  const W=300,H=60,PAD=8;
+  const minV=Math.min(...nums),maxV=Math.max(...nums);
+  const range=maxV-minV||1;
+  const pts=nums.map((v,i)=>{
+    const x=PAD+(i/(nums.length-1))*(W-PAD*2);
+    const y=H-PAD-((v-minV)/range)*(H-PAD*2);
+    return{x,y,v};
+  });
+  const pathD=pts.map((p,i)=>`${i===0?"M":"L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const areaD=pathD+` L${pts[pts.length-1].x.toFixed(1)},${H} L${PAD},${H} Z`;
+  return(
+    <div style={{...sc,marginBottom:8,padding:"10px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <span style={{color:C.muted,fontSize:11,letterSpacing:.5}}>{label}</span>
+        <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+          {nums.length>=2&&<span style={{color:trendColor,fontSize:10}}>{trend>0?"+":""}{trend.toFixed(1)}</span>}
+          <span style={{color:color,fontWeight:800,fontSize:16}}>{last.toFixed(1)}<span style={{fontSize:10,fontWeight:400,marginLeft:2}}>{unit}</span></span>
+        </div>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{overflow:"visible"}}>
+        <defs>
+          <linearGradient id={`g${label.replace(/\s/g,"")}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity=".25"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d={areaD} fill={`url(#g${label.replace(/\s/g,"")})`}/>
+        <path d={pathD} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+        {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={i===pts.length-1?4:2.5} fill={i===pts.length-1?color:C.bg} stroke={color} strokeWidth={i===pts.length-1?0:1.5}/>)}
+        {target&&(()=>{const ty=H-PAD-((parseFloat(target)-minV)/range)*(H-PAD*2);return ty>0&&ty<H?<line x1={PAD} y1={ty} x2={W-PAD} y2={ty} stroke="#FBBF24" strokeWidth={1} strokeDasharray="4,3" opacity={.7}/>:null;})()}
+      </svg>
+      {target&&<div style={{color:"#FBBF24",fontSize:9,marginTop:2,textAlign:"right"}}>target: {target} {unit}</div>}
+    </div>
+  );
+}
+
+// ── ASSESSMENT TRACKER ──
+function AssessmentTracker({assessments,onAdd,onBack}){
+  const [form,setForm]=useState({date:new Date().toISOString().split("T")[0],bw:"",hangHC:"",pullup:"",talonPU:"",tindeqL:"",tindeqR:"",rfdL:"",rfdR:"",notes:""});
+  const [saved,setSaved]=useState(false);
+  const all=[...DEFAULT_ASSESSMENTS,...assessments];
+  const submit=()=>{
+    if(!form.hangHC&&!form.pullup)return;
+    onAdd({...form});
+    setForm({date:new Date().toISOString().split("T")[0],bw:"",hangHC:"",pullup:"",talonPU:"",tindeqL:"",tindeqR:"",rfdL:"",rfdR:"",notes:""});
+    setSaved(true);setTimeout(()=>setSaved(false),2000);
+  };
+  const KPIs=[
+    {key:"hangHC",  label:"Max Hang HC 10s",   unit:"kg extra", color:"#FF5D2E", target:30,  invert:false},
+    {key:"pullup",  label:"Trazioni Zavorrate", unit:"kg extra", color:"#3B8BEB", target:45,  invert:false},
+    {key:"talonPU", label:"Talon Pick-up",      unit:"kg/mano",  color:"#22C55E", target:35,  invert:false},
+    {key:"tindeqL", label:"Tindeq Max L",       unit:"kg",       color:"#38BDF8", target:55,  invert:false},
+    {key:"tindeqR", label:"Tindeq Max R",       unit:"kg",       color:"#FB923C", target:55,  invert:false},
+    {key:"rfdL",    label:"RFD Sinistra",        unit:"N/s",      color:"#A78BFA", target:160, invert:false},
+    {key:"rfdR",    label:"RFD Destra",          unit:"N/s",      color:"#F472B6", target:180, invert:false},
+    {key:"bw",      label:"Peso corporeo",       unit:"kg",       color:"#94A3B8", target:null,invert:true},
+  ];
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",paddingBottom:30}}>
+      <div style={{padding:"14px 16px 12px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:"rgba(12,12,15,.95)",backdropFilter:"blur(10px)",zIndex:10,display:"flex",alignItems:"center",gap:12}}>
+        <button onClick={onBack} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,width:36,height:36,fontSize:16,cursor:"pointer"}}>←</button>
+        <div>
+          <div style={{color:C.text,fontWeight:800,fontSize:15}}>🏆 Assessment Tracker</div>
+          <div style={{color:C.muted,fontSize:10,marginTop:1}}>{all.length} assessment · Target: 8a</div>
+        </div>
+      </div>
+      <div style={{padding:"12px 16px"}}>
+        {/* Charts */}
+        <div style={{...sl}}>Progressione KPI</div>
+        {KPIs.map(k=>(
+          <MiniLineChart key={k.key}
+            vals={all.map(a=>a[k.key]).filter(v=>v!=null&&v!=="")}
+            color={k.color} label={k.label} unit={k.unit}
+            target={k.target} invert={k.invert}
+          />
+        ))}
+        {/* History */}
+        <div style={{...sl,marginTop:16}}>Storico assessment</div>
+        {[...all].reverse().map((a,i)=>(
+          <div key={i} style={{...sc,marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{color:C.text,fontWeight:700,fontSize:13}}>{a.date}</span>
+              {a.bw&&<span style={{color:C.muted,fontSize:12}}>BW {a.bw}kg</span>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+              {a.hangHC!=null&&a.hangHC!==""&&<div style={{background:C.surface,borderRadius:8,padding:"6px 10px"}}><div style={{color:"#FF5D2E",fontWeight:700,fontSize:15}}>+{a.hangHC}kg</div><div style={{color:C.muted,fontSize:9}}>HANG HC</div></div>}
+              {a.pullup!=null&&a.pullup!==""&&<div style={{background:C.surface,borderRadius:8,padding:"6px 10px"}}><div style={{color:"#3B8BEB",fontWeight:700,fontSize:15}}>+{a.pullup}kg</div><div style={{color:C.muted,fontSize:9}}>PULL-UP</div></div>}
+              {a.tindeqL!=null&&a.tindeqL!==""&&<div style={{background:C.surface,borderRadius:8,padding:"6px 10px"}}><div style={{color:"#38BDF8",fontWeight:700,fontSize:15}}>{a.tindeqL}kg</div><div style={{color:C.muted,fontSize:9}}>TINDEQ L</div></div>}
+              {a.tindeqR!=null&&a.tindeqR!==""&&<div style={{background:C.surface,borderRadius:8,padding:"6px 10px"}}><div style={{color:"#FB923C",fontWeight:700,fontSize:15}}>{a.tindeqR}kg</div><div style={{color:C.muted,fontSize:9}}>TINDEQ R</div></div>}
+              {a.rfdL!=null&&a.rfdL!==""&&<div style={{background:C.surface,borderRadius:8,padding:"6px 10px"}}><div style={{color:"#A78BFA",fontWeight:700,fontSize:15}}>{a.rfdL}</div><div style={{color:C.muted,fontSize:9}}>RFD L (N/s)</div></div>}
+              {a.rfdR!=null&&a.rfdR!==""&&<div style={{background:C.surface,borderRadius:8,padding:"6px 10px"}}><div style={{color:"#F472B6",fontWeight:700,fontSize:15}}>{a.rfdR}</div><div style={{color:C.muted,fontSize:9}}>RFD R (N/s)</div></div>}
+            </div>
+            {a.notes&&<div style={{color:C.muted,fontSize:11,marginTop:8,lineHeight:1.4}}>{a.notes}</div>}
+          </div>
+        ))}
+        {/* Add new */}
+        <div style={{...sl,marginTop:16}}>Nuovo assessment</div>
+        <div style={{...sc}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+            {[
+              {k:"date",    l:"Data",         p:"2026-07-07",t:"date"},
+              {k:"bw",      l:"Peso (kg)",    p:"74.8",      t:"number",s:"0.1"},
+              {k:"hangHC",  l:"Hang HC (kg+)",p:"15",        t:"number",s:"0.5"},
+              {k:"pullup",  l:"Pull-up (kg+)",p:"35",        t:"number",s:"0.5"},
+              {k:"talonPU", l:"Talon PU kg/m",p:"28",        t:"number",s:"0.5"},
+              {k:"tindeqL", l:"Tindeq L (kg)",p:"46.3",      t:"number",s:"0.1"},
+              {k:"tindeqR", l:"Tindeq R (kg)",p:"45.8",      t:"number",s:"0.1"},
+              {k:"rfdL",    l:"RFD L (N/s)",  p:"116.8",     t:"number",s:"0.1"},
+              {k:"rfdR",    l:"RFD R (N/s)",  p:"147.8",     t:"number",s:"0.1"},
+            ].map(f=>(
+              <div key={f.k}>
+                <div style={sl}>{f.l}</div>
+                <input style={si} type={f.t} step={f.s} placeholder={f.p} value={form[f.k]} onChange={e=>setForm({...form,[f.k]:e.target.value})}/>
+              </div>
+            ))}
+          </div>
+          <div style={{marginBottom:12}}>
+            <div style={sl}>Note</div>
+            <textarea style={{...si,resize:"none",height:56}} placeholder="Condizioni, HRV, osservazioni..." value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/>
+          </div>
+          <button onClick={submit} style={{width:"100%",padding:12,background:saved?"#22C55E":C.accent,border:"none",borderRadius:10,color:"#000",fontSize:14,fontWeight:800,cursor:"pointer"}}>{saved?"✓ Salvato!":"💾 Salva assessment"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── EXERCISE ALTERNATIVES DATABASE ──
+const ALTS = {
+  "mh":{name:"Max Hang 10s",alts:[
+    {id:"mh_band", cat:"📉 Scalato",  name:"Hang assistito elastico",  sets:6,reps:"10 sec",restSec:180,weight:null,unit:null,      notes:"Elastico sotto i piedi per ridurre il carico. Utile se il gomito duole."},
+    {id:"mh_7s",   cat:"📉 Scalato",  name:"Hang 7s (durata ridotta)", sets:6,reps:"7 sec", restSec:180,weight:15,  unit:"kg extra",notes:"Durata ridotta a 7s — stesso carico, meno stress tendini."},
+    {id:"mh_open", cat:"✋ Variante", name:"Hang open hand 10s",       sets:5,reps:"10 sec",restSec:180,weight:0,   unit:"kg extra",notes:"Full open hand invece di half-crimp. Più sicuro per gomito."},
+    {id:"mh_rungs",cat:"🏠 Casa/TRX",name:"Hang su rungs in legno",   sets:6,reps:"10 sec",restSec:180,weight:0,   unit:"kg extra",notes:"Rungs in legno — feeling diverso dalla tacca, ottimo per sensibilità."},
+    {id:"mh_tindeq",cat:"📊 Tindeq", name:"Isometrico Tindeq",        sets:5,reps:"6 sec", restSec:180,weight:null,unit:null,      notes:"Pull isometrico massimale sul Tindeq. Misura forza in Newton."},
+  ]},
+  "pull":{name:"Trazioni Zavorrate",alts:[
+    {id:"pull_band", cat:"📉 Scalato",  name:"Trazioni con elastico",   sets:4,reps:6,      restSec:180,weight:null,unit:null, notes:"Elastico sotto i piedi — riduce il carico effettivo."},
+    {id:"pull_trx",  cat:"🏠 Casa/TRX",name:"TRX Row",                 sets:4,reps:10,     restSec:90, weight:null,unit:null, notes:"TRX row orizzontale o inclinato — rinforzo scapolare e antagonisti."},
+    {id:"pull_neg",  cat:"📈 Intenso", name:"Negative zavorrate 6s",   sets:4,reps:4,      restSec:240,weight:20,  unit:"kg", notes:"Solo eccentrica 6s. ⚠️ Attenzione gomito — stop se dolore."},
+    {id:"pull_tindeq",cat:"📊 Tindeq",name:"Pull isometrico Tindeq",  sets:5,reps:"6 sec",restSec:180,weight:null,unit:null, notes:"Pull massimale su Tindeq. Confronta L/R per asimmetrie."},
+  ]},
+  "push":{name:"Push Antagonisti",alts:[
+    {id:"push_press",cat:"🏠 Casa/TRX",name:"Press manubri",           sets:3,reps:12,restSec:60,weight:null,unit:null,notes:"Shoulder press con manubri — seduto o in piedi."},
+    {id:"push_trx",  cat:"🏠 Casa/TRX",name:"TRX Push-up",            sets:3,reps:12,restSec:60,weight:null,unit:null,notes:"TRX push-up con piedi a terra — serratio e core."},
+    {id:"push_ytw",  cat:"🏠 Casa/TRX",name:"TRX Y-T-W",              sets:3,reps:10,restSec:60,weight:null,unit:null,notes:"Y-T-W con TRX — rinforzo trapezio e rotatori. Esegui lentamente."},
+    {id:"push_band", cat:"🏠 Casa/TRX",name:"Band pull-apart",         sets:3,reps:20,restSec:45,weight:null,unit:null,notes:"Elastico davanti al petto, allarga le braccia. Ottimo per spalle."},
+    {id:"push_pike", cat:"📈 Intenso", name:"Pike push-up",            sets:3,reps:10,restSec:60,weight:null,unit:null,notes:"Push-up con bacino alto — componente verticale, rinforzo deltoide."},
+  ]},
+  "core":{name:"Core",alts:[
+    {id:"core_hollow",cat:"🏠 Casa/TRX",name:"Hollow body hold",      sets:3,reps:"20 sec",restSec:45,weight:null,unit:null,notes:"Fondamentale per tensione corporea in arrampicata."},
+    {id:"core_dead",  cat:"🏠 Casa/TRX",name:"Dead bug",              sets:3,reps:10,      restSec:45,weight:null,unit:null,notes:"Dead bug alternato — stabilità lombare."},
+    {id:"core_wheel", cat:"🏠 Casa/TRX",name:"Ab wheel rollout",      sets:3,reps:8,       restSec:60,weight:null,unit:null,notes:"Ab wheel da ginocchia — alto coinvolgimento core."},
+    {id:"core_lhang", cat:"📈 Intenso", name:"L-hang su sbarra",      sets:3,reps:"10 sec",restSec:60,weight:null,unit:null,notes:"Appeso con gambe a 90° — core + grip endurance."},
+    {id:"core_trxpike",cat:"🏠 Casa/TRX",name:"TRX Pike",            sets:3,reps:10,      restSec:60,weight:null,unit:null,notes:"TRX pike — core + spalle. Avanza le mani per aumentare difficoltà."},
+  ]},
+  "ext":{name:"Estensori elastico",alts:[
+    {id:"ext_rice",  cat:"🏠 Casa/TRX",name:"Rice bucket",            sets:3,reps:"2 min", restSec:60,weight:null,unit:null,notes:"Dita nel riso, movimenti rotatori e apertura — ottima prevenzione."},
+    {id:"ext_putty", cat:"🏠 Casa/TRX",name:"Therapy putty",          sets:3,reps:20,      restSec:45,weight:null,unit:null,notes:"Pallina o putty — rinforzo estensori e flessori in modo bilanciato."},
+    {id:"ext_pinch", cat:"🏠 Casa/TRX",name:"Pinch block estensione", sets:3,reps:15,      restSec:45,weight:null,unit:null,notes:"Pinch block leggero con focus sull'apertura delle dita."},
+  ]},
+  "arc":{name:"ARC Training",alts:[
+    {id:"arc_home",  cat:"🏠 Casa/TRX",name:"ARC su homewall",        sets:3,reps:"15 min",restSec:180,weight:null,unit:null,notes:"Traverso continuo su homewall a 10-15°. Stessa bassa intensità."},
+    {id:"arc_tindeq",cat:"📊 Tindeq",  name:"Repeaters ARC Tindeq",  sets:3,reps:"6+3×5", restSec:180,weight:null,unit:null,notes:"6s on / 3s off × 5 al 40-50% max. Protocollo endurance specifico."},
+    {id:"arc_short", cat:"📉 Scalato", name:"ARC 10min (ridotto)",    sets:3,reps:"10 min",restSec:120,weight:null,unit:null,notes:"Durata ridotta a 10min — utile se affaticato o poco tempo."},
+  ]},
+  "44":{name:"4×4 Boulder",alts:[
+    {id:"44_home",   cat:"🏠 Casa/TRX",name:"4×4 su homewall",        sets:4,reps:"4 seq.",restSec:180,weight:null,unit:null,notes:"4 sequenze consecutive su homewall. Scegli problemi V2-V4."},
+    {id:"44_33",     cat:"📉 Scalato", name:"3×3 Boulder",            sets:3,reps:"3 prob.",restSec:180,weight:null,unit:null,notes:"Versione ridotta — utile se sei in giornata no."},
+    {id:"44_tindeq", cat:"📊 Tindeq",  name:"Power-endurance Tindeq", sets:4,reps:"7+3×4", restSec:180,weight:null,unit:null,notes:"7s on / 3s off × 4 al 70-75% max. Simula power endurance."},
+  ]},
+  "route":{name:"Vie lunghe",alts:[
+    {id:"route_home",cat:"🏠 Casa/TRX",name:"Vie su homewall",        sets:4,reps:"1 via", restSec:300,weight:null,unit:null,notes:"Via su homewall 20-25° — 15-20 mosse. Focus: efficienza movimento."},
+    {id:"route_tindeq",cat:"📊 Tindeq",name:"Stamina Tindeq",         sets:4,reps:"10+5×4",restSec:300,weight:null,unit:null,notes:"10s on / 5s off × 4 al 60% max. Simula fatica su via lunga."},
+    {id:"route_arc", cat:"📉 Scalato", name:"ARC + 2 vie",            sets:1,reps:"20 min",restSec:300,weight:null,unit:null,notes:"20min ARC poi 2 tentativi su via riferimento."},
+  ]},
+  "camp":{name:"Campus moves",alts:[
+    {id:"camp_dyn",  cat:"📉 Scalato", name:"Dyno su homewall",       sets:3,reps:5,       restSec:180,weight:null,unit:null,notes:"Dyno o lunge su homewall — meno stress dita del campus."},
+    {id:"camp_tindeq",cat:"📊 Tindeq",name:"RFD Tindeq",             sets:5,reps:"1 sec", restSec:180,weight:null,unit:null,notes:"Contrazione esplosiva massimale. Misura RFD in N/s."},
+    {id:"camp_lunge",cat:"📉 Scalato", name:"Lunge controllato",      sets:3,reps:6,       restSec:180,weight:null,unit:null,notes:"Lunge su prese grandi — focus timing e coordinazione."},
+  ]},
+  "rfd":{name:"RFD Hang Tindeq",alts:[
+    {id:"rfd_dyn",   cat:"🏠 Casa/TRX",name:"Campus moves 1-3-5",    sets:3,reps:4,       restSec:180,weight:null,unit:null,notes:"Sequenze campus — sviluppo RFD funzionale su prese reali."},
+    {id:"rfd_scaled",cat:"📉 Scalato", name:"Hang esplosivo BW",      sets:5,reps:"1 sec", restSec:180,weight:0,   unit:"kg",notes:"Stessa cosa senza carico aggiuntivo — meno stress, stessa qualità."},
+    {id:"rfd_clap",  cat:"📈 Intenso", name:"Trazione esplosiva",     sets:4,reps:3,       restSec:180,weight:null,unit:null,notes:"Trazione massimamente rapida — alta RFD, ⚠️ solo se tecnica solida."},
+  ]},
+  "dyn":{name:"Mosse dinamiche",alts:[
+    {id:"dyn_lunge", cat:"📉 Scalato", name:"Lunge controllato",      sets:4,reps:4,restSec:180,weight:null,unit:null,notes:"Lunge su prese grandi — focus timing, meno esplosività."},
+    {id:"dyn_campus",cat:"📈 Intenso", name:"Campus 1-3-5",           sets:3,reps:4,restSec:240,weight:null,unit:null,notes:"Campus board sequenze — alta richiesta neuromuscolare."},
+    {id:"dyn_box",   cat:"🏠 Casa/TRX",name:"Squat jump / box jump",  sets:4,reps:5,restSec:90, weight:null,unit:null,notes:"Sviluppo RFD gambe — scarica le dita, mantieni esplosività."},
+  ]},
+  "proj":{name:"Tentativo Progetto",alts:[
+    {id:"proj_links",cat:"📉 Scalato", name:"Link per sezioni",       sets:4,reps:"1 sezione",restSec:480,weight:null,unit:null,notes:"Lavora le sezioni separatamente invece del redpoint completo."},
+    {id:"proj_easy", cat:"📉 Scalato", name:"Via a -1 grado",         sets:3,reps:"1 via",    restSec:480,weight:null,unit:null,notes:"Via di un grado più facile — fiducia e volume qualità."},
+    {id:"proj_home", cat:"🏠 Casa/TRX",name:"Progetto su homewall",   sets:3,reps:"1 prob.",  restSec:480,weight:null,unit:null,notes:"Crea un problema max su homewall — qualità e intensità alta."},
+  ]},
+};
+
+// ── EXERCISE SWAP MODAL ──
+const CAT_ORDER=["📉 Scalato","🏠 Casa/TRX","📊 Tindeq","📈 Intenso","✋ Variante"];
+function ExerciseSwapModal({exId,currentName,onSelect,onClose}){
+  const db=ALTS[exId];
+  if(!db)return null;
+  const byCategory={};
+  (db.alts||[]).forEach(a=>{
+    if(!byCategory[a.cat])byCategory[a.cat]=[];
+    byCategory[a.cat].push(a);
+  });
+  const cats=CAT_ORDER.filter(c=>byCategory[c]);
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.92)",zIndex:300,display:"flex",flexDirection:"column"}} onClick={onClose}>
+      <div style={{background:C.card,borderRadius:"0 0 20px 20px",padding:"16px 16px 12px",borderBottom:`1px solid ${C.border}`}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{color:C.text,fontWeight:800,fontSize:15}}>Cambia esercizio</div>
+            <div style={{color:C.muted,fontSize:11,marginTop:1}}>Sostituisce: <span style={{color:C.accent}}>{currentName}</span></div>
+          </div>
+          <button onClick={onClose} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,color:C.muted,width:32,height:32,fontSize:16,cursor:"pointer"}}>✕</button>
+        </div>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"12px 16px 24px"}} onClick={e=>e.stopPropagation()}>
+        {cats.map(cat=>(
+          <div key={cat} style={{marginBottom:16}}>
+            <div style={{color:C.muted,fontSize:10,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>{cat}</div>
+            {byCategory[cat].map(alt=>(
+              <div key={alt.id} onClick={()=>onSelect(alt)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                  <div style={{color:C.text,fontWeight:700,fontSize:14,flex:1}}>{alt.name}</div>
+                  <div style={{display:"flex",gap:8,marginLeft:8,flexShrink:0}}>
+                    <span style={{background:`${C.accent}22`,color:C.accent,borderRadius:6,padding:"2px 7px",fontSize:10,fontWeight:700}}>{alt.sets}×{alt.reps}</span>
+                    {alt.weight!=null&&<span style={{background:"rgba(251,191,36,.15)",color:"#FBBF24",borderRadius:6,padding:"2px 7px",fontSize:10,fontWeight:700}}>{alt.weight}{alt.unit||"kg"}</span>}
+                  </div>
+                </div>
+                <div style={{color:C.muted,fontSize:12,lineHeight:1.4}}>{alt.notes}</div>
+                {alt.restSec>0&&<div style={{color:"#3A3A45",fontSize:10,marginTop:4}}>⏱ Rest: {fmtTime(alt.restSec)}</div>}
+              </div>
+            ))}
+          </div>
+        ))}
+        {cats.length===0&&<div style={{color:C.muted,textAlign:"center",padding:24}}>Nessuna alternativa disponibile per questo esercizio.</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── TIMER OVERLAY ──
+function TimerOverlay({timer,onStop}){
+  if(!timer)return null;
+  const pct=timer.total>0?(timer.left/timer.total)*100:0;
+  const done=timer.left<=0;
+  const r=40,circ=2*Math.PI*r;
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+      <div style={{color:C.muted,fontSize:12,letterSpacing:2,textTransform:"uppercase"}}>Riposo — {timer.label}</div>
+      <svg width={120} height={120}>
+        <circle cx={60} cy={60} r={r} fill="none" stroke={C.faint} strokeWidth={6}/>
+        <circle cx={60} cy={60} r={r} fill="none" stroke={done?"#22C55E":C.accent} strokeWidth={6}
+          strokeDasharray={circ} strokeDashoffset={circ*(1-pct/100)} strokeLinecap="round"
+          style={{transform:"rotate(-90deg)",transformOrigin:"60px 60px",transition:"stroke-dashoffset .9s linear"}}/>
+        <text x={60} y={65} textAnchor="middle" fill={done?"#22C55E":C.text} fontSize={done?20:28} fontWeight={700}>{done?"GO!":fmtTime(timer.left)}</text>
+      </svg>
+      <button onClick={onStop} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,fontSize:13,padding:"8px 24px",cursor:"pointer"}}>{done?"Chiudi":"Salta"}</button>
+    </div>
+  );
+}
+
+// ── SESSION DETAIL ──
+function SessionDetail({phaseId,dayIdx,session,onBack,exEdits,onSaveEdits,onStartTimer}){
+  const key=`${phaseId}-${dayIdx}`,db=EX[key];
+  const [edits,setEdits]=useState(exEdits[key]||{});
+  const [saved,setSaved]=useState(false);
+  const [swapModal,setSwapModal]=useState(null); // {exId, currentName}
+  const save=()=>{onSaveEdits(key,edits);setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const upd=(id,f,v)=>setEdits(p=>({...p,[id]:{...p[id],[f]:v}}));
+  const selectAlt=(alt)=>{
+    setEdits(p=>({...p,[swapModal.exId]:{...p[swapModal.exId],alt}}));
+    setSwapModal(null);
+  };
+  const clearAlt=(id)=>setEdits(p=>{const n={...p,[id]:{...p[id]}};delete n[id].alt;return n;});
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",paddingBottom:90}}>
+      <div style={{padding:"14px 16px 12px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:"rgba(12,12,15,.95)",backdropFilter:"blur(10px)",zIndex:10,display:"flex",alignItems:"center",gap:12}}>
+        <button onClick={onBack} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,width:36,height:36,fontSize:16,cursor:"pointer"}}>←</button>
+        <div>
+          <div style={{color:C.text,fontWeight:800,fontSize:15}}>{session.icon} {session.label}</div>
+          <div style={{color:C.muted,fontSize:10,marginTop:1}}>{PHASES[phaseId-1]?.short} · {["Lun","Mar","Mer","Gio","Ven","Sab","Dom"][dayIdx]}</div>
+        </div>
+      </div>
+      <div style={{padding:"12px 16px"}}>
+        {!db?(
+          <div style={{...sc,textAlign:"center",padding:32}}>
+            <div style={{fontSize:40,marginBottom:12}}>{session.icon}</div>
+            <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:8}}>{session.label}</div>
+            <div style={{color:C.muted,fontSize:13,lineHeight:1.6}}>{session.detail}</div>
+          </div>
+        ):(
+          <>
+            {db.warn&&<div style={{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.4)",borderRadius:10,padding:"10px 12px",marginBottom:12}}><div style={{color:"#FBBF24",fontSize:12}}>{db.warn}</div></div>}
+            {swapModal&&<ExerciseSwapModal exId={swapModal.exId} currentName={swapModal.currentName} onSelect={selectAlt} onClose={()=>setSwapModal(null)}/>}
+            {db.exs.map(ex=>{
+              const e=edits[ex.id]||{};
+              const activeEx=e.alt||ex;
+              const isAlt=!!e.alt;
+              const w=e.weight!==undefined?e.weight:activeEx.weight;
+              const r=e.reps!==undefined?e.reps:activeEx.reps;
+              return(
+                <div key={ex.id} style={{...sc,marginBottom:10,border:isAlt?`1px solid rgba(34,197,94,.4)`:`1px solid ${C.border}`}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}}>
+                    <span style={{fontSize:20,lineHeight:1.3}}>{activeEx.emoji||ex.emoji}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                        <div style={{color:C.text,fontWeight:700,fontSize:14}}>{activeEx.name||ex.name}</div>
+                        {isAlt&&<span style={{background:"rgba(34,197,94,.15)",color:"#22C55E",borderRadius:4,fontSize:9,fontWeight:700,padding:"1px 5px"}}>VARIANTE</span>}
+                      </div>
+                      <div style={{color:C.muted,fontSize:11,marginTop:2}}>{activeEx.notes||ex.notes}</div>
+                      {isAlt&&<div style={{color:"#3A3A45",fontSize:10,marginTop:2}}>Originale: {ex.name}</div>}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6,marginBottom:8}}>
+                    {ALTS[ex.id]&&<button onClick={()=>setSwapModal({exId:ex.id,currentName:ex.name})} style={{flex:1,padding:"6px 8px",background:"rgba(255,93,46,.08)",border:`1px solid rgba(255,93,46,.3)`,borderRadius:8,color:C.accent,fontSize:11,cursor:"pointer",fontWeight:600}}>🔄 Cambia esercizio</button>}
+                    {isAlt&&<button onClick={()=>clearAlt(ex.id)} style={{padding:"6px 10px",background:"rgba(34,197,94,.08)",border:`1px solid rgba(34,197,94,.3)`,borderRadius:8,color:"#22C55E",fontSize:11,cursor:"pointer"}}>↩ Ripristina</button>}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                    <div style={{background:C.surface,borderRadius:8,padding:"8px",textAlign:"center"}}>
+                      <div style={{color:"#3B8BEB",fontWeight:700,fontSize:20}}>{ex.sets}</div>
+                      <div style={{color:C.muted,fontSize:9,marginTop:1}}>SERIE</div>
+                    </div>
+                    <div style={{background:C.surface,borderRadius:8,padding:"6px 4px",textAlign:"center"}}>
+                      <input style={{textAlign:"center",fontSize:15,fontWeight:700,color:C.accent,padding:"2px 4px",background:"transparent",border:"none",width:"100%",outline:"none",color:C.accent}} value={r} onChange={e=>upd(ex.id,"reps",e.target.value)}/>
+                      <div style={{color:C.muted,fontSize:9}}>REP/DURATA</div>
+                    </div>
+                    {ex.weight!==null?(
+                      <div style={{background:C.surface,borderRadius:8,padding:"6px 4px",textAlign:"center"}}>
+                        <input type="number" style={{textAlign:"center",fontSize:15,fontWeight:700,color:"#FBBF24",padding:"2px 0",background:"transparent",border:"none",width:"100%",outline:"none"}} value={w} onChange={e=>upd(ex.id,"weight",e.target.value)}/>
+                        <div style={{color:C.muted,fontSize:9}}>{ex.unit?.toUpperCase()||"KG"}</div>
+                      </div>
+                    ):(
+                      <div style={{background:C.surface,borderRadius:8,padding:"8px",textAlign:"center"}}>
+                        <div style={{color:C.muted,fontSize:14}}>BW</div>
+                        <div style={{color:C.muted,fontSize:9,marginTop:1}}>CORPO</div>
+                      </div>
+                    )}
+                  </div>
+                  {ex.restSec>0&&(
+                    <button onClick={()=>onStartTimer(ex.restSec,ex.name)} style={{width:"100%",padding:"8px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,color:C.muted,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                      ⏱️ Rest: {fmtTime(ex.restSec)} — Avvia timer
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <button onClick={save} style={{width:"100%",padding:12,background:saved?"#22C55E":C.accent,border:"none",borderRadius:10,color:"#000",fontSize:14,fontWeight:800,cursor:"pointer",marginTop:4}}>{saved?"✓ Salvato!":"💾 Salva modifiche"}</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── SESSION PILL ──
+function SessionPill({session,isToday,onTap}){
+  const c=SCOL[session.type]||SCOL.rest;
+  const tappable=session.type==="strength"||session.type==="climb";
+  return(
+    <div onClick={onTap} style={{background:isToday?c.bg:"transparent",border:`1px solid ${isToday?c.border:C.border}`,borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,marginBottom:5,position:"relative",cursor:tappable?"pointer":"default",WebkitTapHighlightColor:"transparent"}}>
+      {isToday&&<span style={{position:"absolute",top:6,right:8,background:c.border,borderRadius:4,fontSize:9,fontWeight:800,padding:"1px 5px",color:"#000",letterSpacing:1}}>OGGI</span>}
+      {tappable&&<span style={{position:"absolute",bottom:8,right:10,color:C.muted,fontSize:10}}>→</span>}
+      <span style={{fontSize:18,lineHeight:1}}>{session.icon}</span>
+      <div style={{flex:1,paddingRight:tappable?20:0}}>
+        <div style={{color:C.text,fontSize:13,fontWeight:600}}>{session.label}</div>
+        <div style={{color:C.muted,fontSize:11,marginTop:2}}>{session.detail}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── TAB DASHBOARD ──
+function TabDashboard({phase,checkIns,onGoSession,onGoAssessment}){
+  const todayIdx=getTodayIdx(),todaySession=WEEKLY[phase.id]?.[todayIdx],lastCI=checkIns[checkIns.length-1];
+  return(
+    <div style={{padding:"8px 16px 90px"}}>
+      <div style={{...sc,marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,alignItems:"center"}}>
+          <span style={{color:phase.color,fontWeight:700,fontSize:12,letterSpacing:1.5,textTransform:"uppercase"}}>{phase.emoji} {phase.short} — {phase.name}</span>
+          <span style={{color:C.muted,fontSize:11}}>{getDaysUntil(phase.end)}g rimasti</span>
+        </div>
+        <div style={{height:3,background:C.faint,borderRadius:2,overflow:"hidden",marginBottom:3}}>
+          <div style={{height:"100%",width:`${getPhaseProgress(phase)}%`,background:phase.color,borderRadius:2}}/>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+          <span style={{color:"#3A3A45",fontSize:10}}>{fmtDate(phase.start)}</span>
+          <span style={{color:"#3A3A45",fontSize:10}}>{fmtDate(phase.end)}</span>
+        </div>
+        <div style={{color:C.muted,fontSize:11}}>🥗 {phase.kcal} kcal · {phase.carbs} carbo · 155–165g prot · Obiettivo: 8a</div>
+      </div>
+      <div style={{marginBottom:12}}>
+        <div style={sl}>Oggi — {["Lun","Mar","Mer","Gio","Ven","Sab","Dom"][todayIdx]}</div>
+        {todaySession?<SessionPill session={todaySession} isToday onTap={()=>onGoSession(phase.id,todayIdx,todaySession)}/>:<div style={{...sc,color:C.muted,fontSize:12,textAlign:"center"}}>Riposo oggi 😴</div>}
+      </div>
+      {lastCI&&(
+        <div style={{marginBottom:12}}>
+          <div style={sl}>Ultimo check-in · {lastCI.date}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            {[{l:"Peso",v:lastCI.weight||"—",u:"kg",col:"#38BDF8"},{l:"HRV",v:lastCI.hrv||"—",u:"ms",col:"#22C55E"},{l:"Sonno",v:lastCI.sleep||"—",u:"/100",col:"#C084FC"}].map(s=>(
+              <div key={s.l} style={{...sc,textAlign:"center",padding:"12px 8px"}}>
+                <div style={{color:s.col,fontWeight:800,fontSize:20}}>{s.v}</div>
+                <div style={{color:"#3A3A45",fontSize:10,marginTop:1}}>{s.l}</div>
+                {s.v!=="—"&&<div style={{color:C.muted,fontSize:9}}>{s.u}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Assessment quick link */}
+      <button onClick={()=>onGoAssessment()} style={{width:"100%",marginBottom:12,...sc,display:"flex",alignItems:"center",gap:12,cursor:"pointer",border:`1px solid rgba(255,93,46,.3)`,background:"rgba(255,93,46,.06)"}}>
+        <span style={{fontSize:22}}>🏆</span>
+        <div style={{flex:1,textAlign:"left"}}>
+          <div style={{color:C.text,fontWeight:700,fontSize:13}}>Assessment Tracker</div>
+          <div style={{color:C.muted,fontSize:11,marginTop:1}}>Hang +15kg · Pull +35kg · Target F3: +30kg</div>
+        </div>
+        <span style={{color:C.muted,fontSize:14}}>→</span>
+      </button>
+      <div style={sl}>Stagione 2026</div>
+      {PHASES.map(p=>{
+        const isCurr=p.id===phase.id,isPast=new Date()>new Date(p.end+"T23:59:59");
+        return(
+          <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,background:isCurr?`${p.color}12`:"#16161A",border:`1px solid ${isCurr?p.color+"60":C.border}`,borderRadius:10,padding:"9px 12px",marginBottom:6,opacity:isPast&&!isCurr?0.45:1}}>
+            <span style={{fontSize:16}}>{p.emoji}</span>
+            <div style={{flex:1}}>
+              <div style={{color:isCurr?p.color:C.text,fontSize:12,fontWeight:600}}>{p.short} — {p.name}</div>
+              <div style={{color:"#3A3A45",fontSize:10,marginTop:1}}>{fmtDate(p.start)} → {fmtDate(p.end)} · {p.kcal} kcal</div>
+            </div>
+            {isCurr&&<span style={{color:p.color,fontSize:10,fontWeight:700}}>▶ ATTIVA</span>}
+            {isPast&&<span style={{color:"#3A3A45",fontSize:12}}>✓</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── TAB PIANO ──
+function TabPiano({phase,onGoSession}){
+  const [sel,setSel]=useState(phase.id),todayIdx=getTodayIdx(),sp=PHASES[sel-1];
+  return(
+    <div style={{padding:"8px 16px 90px"}}>
+      <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
+        {PHASES.map(p=>(
+          <button key={p.id} onClick={()=>setSel(p.id)} style={{background:sel===p.id?p.color:"#16161A",border:`1px solid ${sel===p.id?p.color:C.border}`,borderRadius:8,padding:"6px 14px",color:sel===p.id?"#000":"#A0A0B0",fontSize:12,fontWeight:700,whiteSpace:"nowrap",cursor:"pointer"}}>
+            {p.emoji} {p.short}
+          </button>
+        ))}
+      </div>
+      <div style={{...sc,marginBottom:12}}>
+        <div style={{color:sp.color,fontWeight:700,fontSize:14}}>{sp.name}</div>
+        <div style={{color:C.muted,fontSize:11,marginTop:3}}>{fmtDate(sp.start)} → {fmtDate(sp.end)} · {sp.kcal} kcal · {sp.carbs} carbo</div>
+        {sel===phase.id&&<div style={{marginTop:8}}><div style={{height:3,background:C.faint,borderRadius:2,overflow:"hidden",marginBottom:3}}><div style={{height:"100%",width:`${getPhaseProgress(sp)}%`,background:sp.color,borderRadius:2}}/></div><div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"#3A3A45",fontSize:10}}>{fmtDate(sp.start)}</span><span style={{color:"#3A3A45",fontSize:10}}>{fmtDate(sp.end)}</span></div></div>}
+      </div>
+      {(WEEKLY[sel]||[]).map((s,i)=>(
+        <div key={i}>
+          <div style={{...sl,marginBottom:3,paddingLeft:2}}>{s.day}</div>
+          <SessionPill session={s} isToday={sel===phase.id&&i===todayIdx} onTap={()=>onGoSession(sel,i,s)}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── TAB CHECK-IN ──
+function TabCheckin({checkIns,onAdd}){
+  const [form,setForm]=useState({weight:"",bf:"",muscle:"",hrv:"",sleep:"",rhr:"",energy:3,elbow:"no",notes:""});
+  const [saved,setSaved]=useState(false);
+  const [scanning,setScanning]=useState(false);
+  const [scanMsg,setScanMsg]=useState("");
+  const fileRef=useRef();
+
+  const handleImage=async(file)=>{
+    if(!file)return;
+    setScanning(true);setScanMsg("Elaborazione immagine...");
+    try{
+      const b64=await preprocessImage(file);
+      setScanMsg("Analisi con AI in corso...");
+      const resp=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:[
+          {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},
+          {type:"text",text:'Analizza questo screenshot Garmin/Samsung Health. Estrai SOLO i valori numerici visibili. Rispondi UNICAMENTE con JSON valido senza testo extra: {"weight":null,"bf":null,"muscle":null,"hrv":null,"sleep":null,"rhr":null}. Usa null se non visibile chiaramente.'}
+        ]}]})
+      });
+      const data=await resp.json();
+      const txt=(data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim();
+      const parsed=JSON.parse(txt);
+      let found=[];
+      const upd={};
+      if(parsed.weight!=null){upd.weight=String(parsed.weight);found.push("peso");}
+      if(parsed.bf!=null){upd.bf=String(parsed.bf);found.push("grasso");}
+      if(parsed.muscle!=null){upd.muscle=String(parsed.muscle);found.push("muscolo");}
+      if(parsed.hrv!=null){upd.hrv=String(parsed.hrv);found.push("HRV");}
+      if(parsed.sleep!=null){upd.sleep=String(parsed.sleep);found.push("sonno");}
+      if(parsed.rhr!=null){upd.rhr=String(parsed.rhr);found.push("FC");}
+      setForm(p=>({...p,...upd}));
+      setScanMsg(found.length>0?`✅ Trovato: ${found.join(", ")}`:"⚠️ Nessun dato riconosciuto — riprova con screenshot più chiaro.");
+    }catch(err){setScanMsg("❌ Errore: "+err.message);}
+    setScanning(false);setTimeout(()=>setScanMsg(""),5000);
+  };
+
+  const submit=()=>{
+    if(!form.weight&&!form.hrv)return;
+    onAdd({...form,date:new Date().toISOString().split("T")[0]});
+    setForm({weight:"",bf:"",muscle:"",hrv:"",sleep:"",rhr:"",energy:3,elbow:"no",notes:""});
+    setSaved(true);setTimeout(()=>setSaved(false),2500);
+  };
+
+  return(
+    <div style={{padding:"8px 16px 90px"}}>
+      <div style={{...sc,marginBottom:14}}>
+        <div style={{color:C.text,fontSize:15,fontWeight:700,marginBottom:14}}>📋 Check-in settimanale</div>
+        <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImage(e.target.files?.[0])}/>
+        <button onClick={()=>fileRef.current.click()} disabled={scanning} style={{width:"100%",marginBottom:scanMsg?8:14,padding:11,background:scanning?"rgba(56,189,248,.1)":"rgba(56,189,248,.08)",border:`1px solid ${scanning?"#38BDF8":"rgba(56,189,248,.3)"}`,borderRadius:10,color:scanning?"#38BDF8":"#A0A0B0",fontSize:13,cursor:scanning?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          {scanning?"🔍 Analisi in corso...":"📷 Importa da screenshot Garmin/Samsung"}
+        </button>
+        {scanMsg&&<div style={{fontSize:12,marginBottom:14,textAlign:"center",color:scanMsg.startsWith("✅")?"#22C55E":scanMsg.startsWith("⚠️")?"#FBBF24":"#EF4444"}}>{scanMsg}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          {[{k:"weight",l:"Peso (kg)",p:"73.0",t:"number",s:"0.1"},{k:"bf",l:"% Grasso",p:"15.3",t:"number",s:"0.1"},{k:"muscle",l:"Massa musc (kg)",p:"31.9",t:"number",s:"0.1"},{k:"hrv",l:"HRV (ms)",p:"36",t:"number"},{k:"sleep",l:"Sleep score",p:"81",t:"number"},{k:"rhr",l:"FC riposo",p:"52",t:"number"}].map(f=>(
+            <div key={f.k}>
+              <div style={sl}>{f.l}</div>
+              <input style={si} type={f.t} step={f.s} placeholder={f.p} value={form[f.k]} onChange={e=>setForm({...form,[f.k]:e.target.value})}/>
+            </div>
+          ))}
+        </div>
+        <div style={{marginBottom:12}}>
+          <div style={sl}>Energia soggettiva</div>
+          <div style={{display:"flex",gap:5}}>
+            {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setForm({...form,energy:n})} style={{flex:1,padding:"7px 0",borderRadius:8,background:form.energy>=n?C.accent:C.faint,border:"none",color:form.energy>=n?"#000":C.muted,fontSize:13,cursor:"pointer",fontWeight:700}}>⚡</button>)}
+          </div>
+        </div>
+        <div style={{marginBottom:12}}>
+          <div style={sl}>Gomito</div>
+          <div style={{display:"flex",gap:6}}>
+            {[["no","✅ Ok"],["mild","⚠️ Lieve"],["bad","🔴 Dolore"]].map(([val,lbl])=>(
+              <button key={val} onClick={()=>setForm({...form,elbow:val})} style={{flex:1,padding:"7px 4px",borderRadius:8,cursor:"pointer",background:form.elbow===val?(val==="no"?"rgba(34,197,94,.15)":val==="mild"?"rgba(251,191,36,.15)":"rgba(239,68,68,.15)"):"#16161A",border:`1px solid ${form.elbow===val?(val==="no"?"#22C55E":val==="mild"?"#FBBF24":"#EF4444"):C.border}`,color:C.text,fontSize:11}}>{lbl}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <div style={sl}>Note</div>
+          <textarea style={{...si,resize:"none",height:64}} placeholder="Sensazioni, progressi, gomito..." value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/>
+        </div>
+        <button onClick={submit} style={{width:"100%",padding:12,background:saved?"#22C55E":C.accent,border:"none",borderRadius:10,color:"#000",fontSize:14,fontWeight:800,cursor:"pointer"}}>{saved?"✓ Salvato!":"Salva Check-in"}</button>
+      </div>
+      {checkIns.length>0&&(<>
+        <div style={sl}>Storico</div>
+        {[...checkIns].reverse().map((c,i)=>(
+          <div key={i} style={{...sc,marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+              <span style={{color:C.text,fontWeight:600,fontSize:13}}>{c.date}</span>
+              <span>{c.elbow==="bad"?"🔴":c.elbow==="mild"?"⚠️":"✅"} {"⚡".repeat(c.energy||0)}</span>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              {c.weight&&<span style={{color:"#38BDF8",fontSize:12}}>⚖️ {c.weight}kg</span>}
+              {c.bf&&<span style={{color:"#FB923C",fontSize:12}}>📊 {c.bf}%</span>}
+              {c.muscle&&<span style={{color:"#C084FC",fontSize:12}}>💪 {c.muscle}kg</span>}
+              {c.hrv&&<span style={{color:"#22C55E",fontSize:12}}>💚 {c.hrv}ms</span>}
+              {c.sleep&&<span style={{color:"#C084FC",fontSize:12}}>😴 {c.sleep}/100</span>}
+              {c.rhr&&<span style={{color:"#FB923C",fontSize:12}}>❤️ {c.rhr}bpm</span>}
+            </div>
+            {c.notes&&<div style={{color:C.muted,fontSize:11,marginTop:6,lineHeight:1.4}}>{c.notes}</div>}
+          </div>
+        ))}
+      </>)}
+
+      {/* Progressione nel tempo */}
+      {checkIns.length>=2&&(
+        <div style={{marginTop:8}}>
+          <div style={{color:C.muted,fontSize:10,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Progressione nel tempo</div>
+          {[
+            {key:"weight",label:"Peso",    unit:"kg",  color:"#38BDF8",invert:true},
+            {key:"bf",    label:"% Grasso",unit:"%",   color:"#FB923C",invert:true},
+            {key:"muscle",label:"Muscolo", unit:"kg",  color:"#C084FC",invert:false},
+            {key:"hrv",   label:"HRV",     unit:"ms",  color:"#22C55E",invert:false},
+            {key:"sleep", label:"Sonno",   unit:"/100",color:"#A78BFA",invert:false},
+          ].map(m=>(
+            <MiniLineChart key={m.key}
+              vals={checkIns.map(c=>c[m.key]).filter(v=>v!=null&&v!=="")}
+              color={m.color} label={m.label} unit={m.unit} invert={m.invert}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── TAB PASTI ──
+function TabMeal({mealPlan,onSave,phase}){
+  const [selDay,setSelDay]=useState(getTodayIdx());
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState({});
+  const [saved,setSaved]=useState(false);
+  const dayKey=DAY_LABELS[selDay];
+  const meals={...DEFAULT_MEAL[dayKey],...(mealPlan[dayKey]||{})};
+  return(
+    <div style={{padding:"8px 16px 90px"}}>
+      <div style={{...sc,marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div><div style={{color:C.text,fontWeight:700,fontSize:14}}>🍽️ Meal Plan settimanale</div><div style={{color:C.muted,fontSize:11,marginTop:2}}>{phase.kcal} kcal · {phase.carbs} carbo · 155–165g prot</div></div>
+          <div style={{background:`${phase.color}18`,border:`1px solid ${phase.color}50`,borderRadius:8,padding:"4px 10px",color:phase.color,fontSize:11,fontWeight:700}}>{phase.short}</div>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:5,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
+        {["L","M","M","G","V","S","D"].map((d,i)=>{
+          const isToday=i===getTodayIdx();
+          return(
+            <button key={i} onClick={()=>{setSelDay(i);setEditing(false);}} style={{minWidth:38,height:38,borderRadius:10,border:`1px solid ${selDay===i?C.accent:C.border}`,background:selDay===i?`${C.accent}20`:"#16161A",color:selDay===i?C.accent:isToday?C.text:C.muted,fontSize:13,fontWeight:selDay===i?700:400,cursor:"pointer",position:"relative"}}>
+              {d}{isToday&&<div style={{position:"absolute",bottom:3,left:"50%",transform:"translateX(-50%)",width:3,height:3,borderRadius:"50%",background:C.accent}}/>}
+            </button>
+          );
+        })}
+      </div>
+      <div style={sl}>{DAY_NAMES[selDay]}</div>
+      {editing?(
+        <div style={{...sc,marginBottom:10}}>
+          {MEAL_LABELS.map((mk,mi)=>(
+            <div key={mk} style={{marginBottom:12}}>
+              <div style={sl}>{MEAL_NAMES[mi]}</div>
+              <textarea style={{...si,resize:"none",height:56,fontSize:13}} value={draft[mk]||""} onChange={e=>setDraft(p=>({...p,[mk]:e.target.value}))}/>
+            </div>
+          ))}
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setEditing(false)} style={{flex:1,padding:10,background:"#16161A",border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,fontSize:13,cursor:"pointer"}}>Annulla</button>
+            <button onClick={()=>{onSave(dayKey,draft);setEditing(false);setSaved(true);setTimeout(()=>setSaved(false),2000);}} style={{flex:1,padding:10,background:saved?"#22C55E":C.accent,border:"none",borderRadius:10,color:"#000",fontSize:13,fontWeight:800,cursor:"pointer"}}>{saved?"✓":"Salva"}</button>
+          </div>
+        </div>
+      ):(
+        <>
+          {MEAL_LABELS.map((mk,mi)=>(
+            <div key={mk} style={{...sc,marginBottom:8}}>
+              <div style={{color:C.muted,fontSize:11,marginBottom:4}}>{MEAL_NAMES[mi]}</div>
+              <div style={{color:C.text,fontSize:13,lineHeight:1.5}}>{meals[mk]||"—"}</div>
+            </div>
+          ))}
+          <button onClick={()=>{setDraft({...meals});setEditing(true);}} style={{width:"100%",padding:11,marginTop:4,background:"#16161A",border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,fontSize:13,cursor:"pointer"}}>✏️ Modifica {DAY_NAMES[selDay].toLowerCase()}</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── TAB COACH ──
+function TabCoach({phase,checkIns,exEdits}){
+  const welcome=`Ciao Giacomo! 👋\n\nSiamo in ${phase.emoji} **${phase.short} — ${phase.name}**, termina il ${fmtDate(phase.end)} (${getDaysUntil(phase.end)}g rimasti).\n\nCosa vuoi discutere?`;
+  const [msgs,setMsgs]=useState([{role:"assistant",content:welcome}]);
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const botRef=useRef(),inRef=useRef();
+  useEffect(()=>{botRef.current?.scrollIntoView({behavior:"smooth"});},[msgs,loading]);
+  const send=async()=>{
+    const txt=input.trim();if(!txt||loading)return;
+    setInput("");
+    const newMsgs=[...msgs,{role:"user",content:txt}];
+    setMsgs(newMsgs);setLoading(true);
+    const ciCtx=checkIns.length>0?"\n\nULTIMI CHECK-IN:\n"+checkIns.slice(-3).map(c=>`• ${c.date}: ${[c.weight&&`peso ${c.weight}kg`,c.bf&&`BF ${c.bf}%`,c.hrv&&`HRV ${c.hrv}ms`,c.sleep&&`sleep ${c.sleep}`,`gomito:${c.elbow}`,`energia:${c.energy}/5`].filter(Boolean).join(", ")}${c.notes?` — "${c.notes}"`:""}` ).join("\n"):"";
+    const exCtx=Object.keys(exEdits).length>0?"\n\nMODIFICHE CARICHI:\n"+Object.entries(exEdits).map(([k,v])=>`${k}: ${Object.entries(v).map(([id,e])=>`${id}→${e.weight||"?"}kg×${e.reps||"?"}`).join(", ")}`).join("\n"):"";
+    const sys=SYSTEM_PROMPT+ciCtx+exCtx+`\n\nFASE CORRENTE: ${phase.short} (${fmtDate(phase.start)}–${fmtDate(phase.end)}, ${phase.kcal} kcal, ${getDaysUntil(phase.end)}g rimasti)`;
+    const apiMsgs=newMsgs.slice(1).slice(-14).map(m=>({role:m.role,content:m.content}));
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:apiMsgs})});
+      const data=await res.json();
+      setMsgs(p=>[...p,{role:"assistant",content:data.content?.[0]?.text||"Errore risposta."}]);
+    }catch{setMsgs(p=>[...p,{role:"assistant",content:"Errore di connessione."}]);}
+    setLoading(false);
+  };
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 126px)"}}>
+      <div style={{flex:1,overflowY:"auto",padding:"8px 16px 8px"}}>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{marginBottom:10,display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+            <div style={{maxWidth:"88%",background:m.role==="user"?C.accent:"#1A1A20",border:m.role==="user"?"none":`1px solid ${C.border}`,borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 13px",color:m.role==="user"?"#000":"#E8E8F0",fontSize:13,lineHeight:1.55,whiteSpace:"pre-wrap"}}>
+              {m.content}
+            </div>
+          </div>
+        ))}
+        {loading&&<div style={{display:"flex",gap:5,padding:"8px 4px"}}>{[0,1,2].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.accent,opacity:.7,animation:`bounce 1.2s ease-in-out ${i*.2}s infinite`}}/>)}</div>}
+        <div ref={botRef}/>
+      </div>
+      {msgs.length<3&&(
+        <div style={{padding:"0 16px 8px",display:"flex",gap:6,overflowX:"auto"}}>
+          {["Modifica i carichi","Genera meal plan","Gestione gomito","Analizza check-in"].map(q=>(
+            <button key={q} onClick={()=>{setInput(q);setTimeout(()=>inRef.current?.focus(),0);}} style={{background:"#16161A",border:`1px solid ${C.border}`,borderRadius:20,color:"#A0A0B0",fontSize:11,padding:"6px 12px",whiteSpace:"nowrap",cursor:"pointer",flexShrink:0}}>{q}</button>
+          ))}
+        </div>
+      )}
+      <div style={{padding:"10px 16px 16px",borderTop:`1px solid ${C.border}`,background:"rgba(12,12,15,.97)"}}>
+        <div style={{display:"flex",gap:8}}>
+          <input ref={inRef} style={{flex:1,...si,borderRadius:22,padding:"10px 14px",fontSize:13}} placeholder="Chiedi al coach..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()}/>
+          <button onClick={send} disabled={loading} style={{background:loading?C.faint:C.accent,border:"none",borderRadius:"50%",width:42,height:42,display:"flex",alignItems:"center",justifyContent:"center",color:loading?C.muted:"#000",fontSize:18,cursor:loading?"default":"pointer",flexShrink:0}}>→</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAIN APP ──
+function App(){
+  const [tab,setTab]=useState("home");
+  const [subPage,setSubPage]=useState(null);
+  const [checkIns,setCheckIns]=useState([]);
+  const [exEdits,setExEdits]=useState({});
+  const [mealPlan,setMealPlan]=useState({});
+  const [assessments,setAssessments]=useState([]);
+  const [showAssessment,setShowAssessment]=useState(false);
+  const [timer,setTimer]=useState(null);
+  const [ready,setReady]=useState(false);
+  const timerRef=useRef();
+  const phase=getCurrentPhase();
+
+  useEffect(()=>{
+    Promise.all([ld("ci_v3"),ld("ex_v3"),ld("meal_v3"),ld("asmnt_v1")]).then(([ci,ex,mp,as])=>{
+      if(ci)setCheckIns(ci);if(ex)setExEdits(ex);if(mp)setMealPlan(mp);if(as)setAssessments(as);setReady(true);
+    });
+  },[]);
+
+  useEffect(()=>{
+    if(timer&&timer.left>0){timerRef.current=setTimeout(()=>setTimer(t=>t?{...t,left:t.left-1}:null),1000);}
+    return()=>clearTimeout(timerRef.current);
+  },[timer]);
+
+  const addCheckin=async(e)=>{const u=[...checkIns,e];setCheckIns(u);await sv("ci_v3",u);};
+  const addAssessment=async(e)=>{const u=[...assessments,e];setAssessments(u);await sv("asmnt_v1",u);};
+  const saveExEdits=async(k,v)=>{const u={...exEdits,[k]:v};setExEdits(u);await sv("ex_v3",u);};
+  const saveMeal=async(dk,m)=>{const u={...mealPlan,[dk]:m};setMealPlan(u);await sv("meal_v3",u);};
+
+  if(!ready)return<div style={{background:C.bg,height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontSize:40}}>⛰️</div>;
+
+  const TABS=[{id:"home",icon:"🏠",label:"Home"},{id:"piano",icon:"📅",label:"Piano"},{id:"checkin",icon:"📊",label:"Check-in"},{id:"pasti",icon:"🍽️",label:"Pasti"},{id:"coach",icon:"💬",label:"Coach"}];
+
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",color:C.text,maxWidth:480,margin:"0 auto"}}>
+      <TimerOverlay timer={timer} onStop={()=>setTimer(null)}/>
+      {showAssessment?(
+        <AssessmentTracker assessments={assessments} onAdd={addAssessment} onBack={()=>setShowAssessment(false)}/>
+      ):subPage?(
+        <SessionDetail phaseId={subPage.phaseId} dayIdx={subPage.dayIdx} session={subPage.session} onBack={()=>setSubPage(null)} exEdits={exEdits} onSaveEdits={saveExEdits} onStartTimer={(s,l)=>setTimer({total:s,left:s,label:l})}/>
+      ):(
+        <>
+          <div style={{padding:"14px 16px 12px",borderBottom:`1px solid #1A1A22`,position:"sticky",top:0,background:"rgba(12,12,15,.95)",backdropFilter:"blur(10px)",zIndex:50}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div><div style={{fontSize:16,fontWeight:800,letterSpacing:-.5}}>{phase.emoji} Giacomo · Coach AI</div><div style={{color:"#4A4A58",fontSize:10,marginTop:2}}>{phase.short} · {phase.name} · {getDaysUntil(phase.end)}g alla fine fase</div></div>
+              <div style={{background:`${phase.color}18`,border:`1px solid ${phase.color}50`,borderRadius:8,padding:"4px 10px",color:phase.color,fontSize:12,fontWeight:700}}>{phase.kcal} kcal</div>
+            </div>
+          </div>
+          <div style={{paddingTop:8}}>
+            {tab==="home"   &&<TabDashboard phase={phase} checkIns={checkIns} onGoSession={(p,d,s)=>setSubPage({phaseId:p,dayIdx:d,session:s})} onGoAssessment={()=>setShowAssessment(true)}/>}
+            {tab==="piano"  &&<TabPiano phase={phase} onGoSession={(p,d,s)=>setSubPage({phaseId:p,dayIdx:d,session:s})}/>}
+            {tab==="checkin"&&<TabCheckin checkIns={checkIns} onAdd={addCheckin}/>}
+            {tab==="pasti"  &&<TabMeal mealPlan={mealPlan} onSave={saveMeal} phase={phase}/>}
+            {tab==="coach"  &&<TabCoach phase={phase} checkIns={checkIns} exEdits={exEdits}/>}
+          </div>
+          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(12,12,15,.97)",borderTop:`1px solid #1A1A22`,display:"flex",padding:"8px 0 14px",zIndex:50}}>
+            {TABS.map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",padding:0}}>
+                <span style={{fontSize:tab===t.id?22:19,lineHeight:1}}>{t.icon}</span>
+                <span style={{fontSize:9,fontWeight:tab===t.id?700:400,color:tab===t.id?C.accent:"#3A3A48"}}>{t.label}</span>
+                {tab===t.id&&<div style={{width:3,height:3,borderRadius:"50%",background:C.accent}}/>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
